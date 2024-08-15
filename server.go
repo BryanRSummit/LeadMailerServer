@@ -56,7 +56,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "<tr><td>Not enough data in the sheet</td></tr>")
 	} else {
 		// Iterate through the data starting from row 6
-		for i := 4; i < len(data); i++ {
+		for i := 6; i < len(data); i++ {
 			row := data[i]
 
 			// Check if the row has less than 2 columns or if the second column is empty
