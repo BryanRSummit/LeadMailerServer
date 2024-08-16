@@ -19,10 +19,12 @@ var (
 
 func init() {
 	// Initialize Google Sheets API client
-	credBytes, err := os.ReadFile("./agentleadmailer-8cc577104ac3.json")
-	if err != nil {
-		log.Fatalf("Unable to read credentials file: %v", err)
+	credJSON := os.Getenv("SHEETS_CREDS")
+	if credJSON == "" {
+		log.Fatal("SHEETS_CREDS environment variable is not set")
 	}
+
+	credBytes := []byte(credJSON)
 
 	config, err := google.JWTConfigFromJSON(credBytes, sheets.SpreadsheetsScope)
 	if err != nil {
