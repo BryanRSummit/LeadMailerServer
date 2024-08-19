@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/sheets/v4"
@@ -89,7 +90,11 @@ func updateLeadInSheet(leadID string) error {
 	rowIndex := -1
 	for i, row := range resp.Values {
 		for _, cell := range row {
-			if cell == leadID {
+			cellStr, ok := cell.(string)
+			if !ok {
+				continue // Skip non-string cells
+			}
+			if strings.Contains(cellStr, leadID) {
 				rowIndex = i
 				break
 			}
