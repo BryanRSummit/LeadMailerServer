@@ -124,7 +124,16 @@ func updateLeadInSheet(leadID string) error {
 	return nil
 }
 
+func handleRoot(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	fmt.Fprintf(w, "Welcome to the leadMailer service. Please use the /leadMailer endpoint.")
+}
+
 func main() {
+	http.HandleFunc("/", handleRoot)
 	http.HandleFunc("/leadMailer", handleLeadMailer)
 
 	port := os.Getenv("PORT")
