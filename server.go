@@ -51,7 +51,7 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == "POST" {
+	if r.Method == "GET" {
 		leadID := r.URL.Query().Get("lead_id")
 		if leadID == "" {
 			http.Error(w, "Missing lead_id", http.StatusBadRequest)
@@ -67,11 +67,11 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `{"message": "Lead updated, emails will no longer be sent! %s"}`, leadID)
-	} else if r.Method == "GET" {
+	} else if r.Method == "POST" {
 		leadID := r.URL.Query().Get("lead_id")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"message": "GET request received, to update lead use POST %s"}`, leadID)
+		fmt.Fprintf(w, `{"message": "POST request received, to update lead use GET %s"}`, leadID)
 	} else {
 		http.Error(w, "Unsupported method", http.StatusMethodNotAllowed)
 	}
@@ -124,17 +124,8 @@ func updateLeadInSheet(leadID string) error {
 	return nil
 }
 
-func handleRoot(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-	fmt.Fprintf(w, "Welcome to the leadMailer service. Please use the /leadMailer endpoint.")
-}
-
 func main() {
-	http.HandleFunc("/", handleRoot)
-	http.HandleFunc("/leadMailer", handleLeadMailer)
+	http.HandleFunc("/", handleLeadMailer)
 
 	port := os.Getenv("PORT")
 	if port == "" {
