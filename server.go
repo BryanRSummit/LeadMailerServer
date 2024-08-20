@@ -72,7 +72,7 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 			<html>
 				<body>
 					<h1>Confirm That you wish to Give Up Lead!</h1>
-					<p>This is a permanent Action! Lead: %s</p>
+					<p>This is a permanent Action!</p>
 					<button onclick="confirmUpdate('%s')">Confirm</button>
 					<script>
 						function confirmUpdate(leadID) {
@@ -99,7 +99,7 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 					</script>
 				</body>
 			</html>
-		`, leadID, leadID)
+		`, leadID)
 
 	} else if r.Method == "POST" {
 		leadID := r.URL.Query().Get("lead_id")
