@@ -72,7 +72,7 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 			<html>
 				<body>
 					<h1>Confirm That you wish to Give Up Lead!</h1>
-					<p>This is a permanent Action!</p>
+					<p>This is a permanent Action! Lead: %s</p>
 					<button onclick="confirmUpdate('%s')">Confirm</button>
 					<script>
 						function confirmUpdate(leadID) {
@@ -85,21 +85,22 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 							})
 							.then(response => response.json())
 							.then(data => {
-								// Remove the button and show a success message
-								const buttonElement = document.querySelector('button[onclick="confirmUpdate(\'' + leadID + '\')"]');
-								buttonElement.parentNode.removeChild(buttonElement);
-								
-								const successMessage = document.createElement('p');
-								successMessage.textContent = 'Lead ' + leadID + ' has been updated.';
-								buttonElement.parentNode.appendChild(successMessage);
+								    // Remove the button and show a success message
+									const buttonElement = document.querySelector('button[onclick="confirmUpdate(\'' + leadID + '\')"]');
+									buttonElement.parentNode.removeChild(buttonElement);
+									
+									const successMessage = document.createElement('p');
+									successMessage.textContent = 'Lead ' + leadID + ' has been updated.';
+									buttonElement.parentNode.appendChild(successMessage);
 							})
 							.catch(error => {
 								alert('An error occurred: ' + error);
 							});
+						}
 					</script>
 				</body>
 			</html>
-		`, leadID)
+		`, leadID, leadID)
 
 	} else if r.Method == "POST" {
 		leadID := r.URL.Query().Get("lead_id")
