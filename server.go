@@ -60,19 +60,19 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err := updateLeadInSheet(leadID)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("An error occurred: %v", err), http.StatusInternalServerError)
-			return
-		}
+		// err := updateLeadInSheet(leadID)
+		// if err != nil {
+		// 	http.Error(w, fmt.Sprintf("An error occurred: %v", err), http.StatusInternalServerError)
+		// 	return
+		// }
 
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprintf(w, `
 			<html>
 				<body>
-					<h1>Lead Updated</h1>
-					<p>Emails will no longer be sent for lead: %s</p>
+					<h1>Confirm That you wish to Give Up Lead!</h1>
+					<p>This is a permanent Action! Lead: %s</p>
 					<button onclick="confirmUpdate('%s')">Confirm</button>
 					<script>
 						function confirmUpdate(leadID) {
