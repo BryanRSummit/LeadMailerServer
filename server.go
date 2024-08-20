@@ -20,6 +20,25 @@ var (
 )
 
 func init() {
+	// // Set the environment variable directly in the code
+	// os.Setenv("SHEETS_CREDS", `{
+	// 	"type": "service_account",
+	// 	"project_id": "agentleadmailer",
+	// 	"private_key_id": "8cc577104ac3f36b7a4bac187e5172e529dc8d9e",
+	// 	"private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC1JJQhLA75qKa5\n3uEfMZm0Kz3uMg72lH3Chs53L/f/vTjWItwqGfdapyLCUKEwzwAkuTyFLh0ralk1\nTnkukuCtsZ3uXkfJmEOOlQLsJPRi0DeKm/nDsVa/iVUtE51xx1doZFjELJ6CydPn\nkf+VHzuxScSU+zDlBuMtid8qb9vWKwF+DSE3azex2UwflqdngjH/TuzcqaWM09s9\nJE+mEmEM4FZI7TeR6EDSsHZM5NGn5qWqX2zzLVnbrfYkL3YjXsXJZy3dgc4L3Sev\nfaCIhlQNwhL3VaPORQYj9yZ+mVJHbn6zpSN5QjHtvR4A3M0pPlY+nzx32PrMtM5P\nftZAEva1AgMBAAECggEAIEPrNLtt0W+Gfx4hmFZT7AE1z0tQWgCaI/+yIA3FzWJN\nkOr1r3QfmKCjstv80j5U5rWt/4T2wih3ymR3dmHILngwSui1PcXm5qtJMXnlpAI1\nmnVs+DwK2SQjrVtMlJsuyRPyscLG20ILAjkBvvSow8wBfY3+qBThe1ePDjaNgGis\nck12coD95pBVUuUcQFF5+3kRyMyrs1Q7hJegd25zeWA7ogO+o2OJ4smQfhfhUxyU\nTM0XWdYPBH1dfLlXNr3c6U+U92ZDd03LB9u2+nBNzKh3GiCIU6oLAFm+TleTTZ18\nFfLiO2vrq9C3gg2XgYWy1jWaxQfUmqV+4FNwM2IRIQKBgQDwxbV+XGuBf+f7P5SJ\nq5GKoxcMMZN2dOzGxdtdynVv93bDHzOmY3nqHEMgkYsIHXmUVC5zID/HcABYaa0L\nxitiXWj+iOW+yEKqQ9FNjV9nOUu+0RoKU5p4gTJL0QcjNK3v2VNMtuspQ50pgPCH\ndkKz16zogvqlxATrTMdQAb1AMQKBgQDAmWxJ60W0E98YM++VA1bUfkkQqj5LQGMN\nvL69k0/Fp7Eney/EO0RkPHyBGx8z+my60H9UFubuLLsMe++YbR7IIbG1d0EFJyH0\nioX2D2uPksl4fEAV0WnKUYjqgnWP4Q1t5LnkkX+dAUQkupViXsGZhcJxuTpFUlNr\nGel1XH5hxQKBgGNDb4bv/VZ/cBmSZd+4PyGkCV16luwQWom8iqsJTA9kO69IDtg7\nTMjq6/XiaypmVHiFmDzYf9LuZwYMU052Xe6Iyj+eGvHjyDBAE2tgrIN3CLZbqNu3\nCglCYoUFYWbvUgJ/W6tWAm+Zs5Kn2QJQDEHu2hdl4IY04T5NAiMHBIoRAoGBAJnU\nsPplcVoAmSsiqFRTw3GboE4wO+ss9TDOtWaDl66eXs/TA3bvg5OwAB26hPSmK1wX\nFewbEr3felLhVqBfX7unteHj60nrVKKWVaMP8/BL5KFYVHNYvO98qifspWuS7H/+\ntT9LuyqzDTNs184nMuilPoZI1LLzq28a1i4H/2WlAoGAR6jdam9PanzV8lQVmtOo\nEADY3FMZ+cMRferPFKAopxu6NaLA0LjEOreSub1DnyBoH+flqIJ9O/byPfB6kGNc\n7Co4b1/01FlA0gdlGv84rGTUQ9C3eHZROZIJ2ZGlkvBd+IV2c+OWjSsMUGL2Wqmy\n8I4LlkY/mPWiH6yGrK/TORA=\n-----END PRIVATE KEY-----",
+	// 	"client_email": "agentleadmailerservice@agentleadmailer.iam.gserviceaccount.com",
+	// 	"client_id": "109660796532972752753",
+	// 	"auth_uri": "https://accounts.google.com/o/oauth2/auth",
+	// 	"token_uri": "https://oauth2.googleapis.com/token",
+	// 	"auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+	// 	"client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/agentleadmailerservice%40agentleadmailer.iam.gserviceaccount.com",
+	// 	"universe_domain": "googleapis.com"
+	//   }`)
+
+	// // // Load .env file
+	// // if err := godotenv.Load(); err != nil {
+	// // 	fmt.Println("Error loading .env file")
+	// // }
 	// Initialize Google Sheets API client
 	credJSON := os.Getenv("SHEETS_CREDS")
 	// Use the sheetsCreds value in your code
@@ -73,9 +92,13 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `
 			<html>
 				<body>
-					<h1>Confirm That you wish to Give Up Lead!</h1>
-					<p>This is a permanent Action! Lead: %s</p>
-					<button onclick="confirmUpdate('%s')">Confirm</button>
+				<h1 style="font-size: 24px;">Confirm That You Wish to Give Up Lead!</h1>
+				<p><b style="font-size: 20px;">This is a permanent Action! Lead: %s</b></p>
+				<button 
+					onclick="confirmUpdate('%s')" 
+					style="font-size: 36px; padding: 20px 40px; border-radius: 10px; background-color: #007BFF; color: white; border: none; cursor: pointer;">
+					Confirm
+				</button>
 					<script>
 						function confirmUpdate(leadID) {
 							// Make an AJAX request to the server to update the lead
@@ -89,17 +112,15 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 							.then(data => {
 								// Find the button element
 								const buttonElement = document.querySelector('button[onclick="confirmUpdate(\'' + leadID + '\')"]');
-								
-								// Check if the button element is available
+
 								if (buttonElement) {
 									// Remove the button and show a success message
-									buttonElement.parentNode.removeChild(buttonElement);
-									
 									const successMessage = document.createElement('p');
+									successMessage.style.fontSize = '18px';
 									successMessage.textContent = 'Lead ' + leadID + ' has been updated.';
-									buttonElement.parentNode.appendChild(successMessage);
+									buttonElement.parentNode.replaceChild(successMessage, buttonElement);
 								} else {
-									// Button element not found, display a message
+									// Button element not found, display a message without modifying the DOM
 									alert('Lead ' + leadID + ' has been updated.');
 								}
 							})
