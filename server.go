@@ -22,6 +22,8 @@ var (
 func init() {
 	// Initialize Google Sheets API client
 	credJSON := os.Getenv("SHEETS_CREDS")
+	// Use the sheetsCreds value in your code
+	fmt.Println("SHEETS_CREDS:", credJSON)
 	if credJSON == "" {
 		log.Fatal("SHEETS_CREDS environment variable is not set")
 	}
