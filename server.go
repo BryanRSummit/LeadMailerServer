@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
 
@@ -35,7 +36,7 @@ func init() {
 	ctx := context.Background()
 	client := config.Client(ctx)
 
-	sheetsService, err = sheets.New(client)
+	sheetsService, err = sheets.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		log.Fatalf("Unable to create Sheets client: %v", err)
 	}
@@ -65,9 +66,36 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"message": "Lead updated, emails will no longer be sent! %s"}`, leadID)
+		fmt.Fprintf(w, `
+			<html>
+				<body>
+					<h1>Lead Updated</h1>
+					<p>Emails will no longer be sent for lead: %s</p>
+					<button onclick="confirmUpdate('%s')">Confirm</button>
+					<script>
+						function confirmUpdate(leadID) {
+							// Make an AJAX request to the server to update the lead
+							fetch('/update-lead?lead_id=' + leadID, {
+								method: 'GET',
+								headers: {
+									'Content-Type': 'application/json'
+								}
+							})
+							.then(response => response.json())
+							.then(data => {
+								alert('Lead ' + leadID + ' has been updated.');
+							})
+							.catch(error => {
+								alert('An error occurred: ' + error);
+							});
+						}
+					</script>
+				</body>
+			</html>
+		`, leadID, leadID)
+
 	} else if r.Method == "POST" {
 		leadID := r.URL.Query().Get("lead_id")
 		w.Header().Set("Content-Type", "application/json")
@@ -129,9 +157,28 @@ func updateLeadInSheet(leadID string) error {
 	return nil
 }
 
+// New endpoint to handle the AJAX request
+func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
+	leadID := r.URL.Query().Get("lead_id")
+	if leadID == "" {
+		http.Error(w, "Missing lead_id", http.StatusBadRequest)
+		return
+	}
+
+	err := updateLeadInSheet(leadID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("An error occurred: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"message": "Lead updated, emails will no longer be sent! %s"}`, leadID)
+}
+
 func main() {
 	http.HandleFunc("/", handleLeadMailer)
-
+	http.HandleFunc("/update-lead", updateLeadHandler)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
