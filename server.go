@@ -85,13 +85,21 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 							})
 							.then(response => response.json())
 							.then(data => {
-								    // Remove the button and show a success message
-									const buttonElement = document.querySelector('button[onclick="confirmUpdate(\'' + leadID + '\')"]');
+								// Find the button element
+								const buttonElement = document.querySelector('button[onclick="confirmUpdate(\'' + leadID + '\')"]');
+								
+								// Check if the button element is available
+								if (buttonElement) {
+									// Remove the button and show a success message
 									buttonElement.parentNode.removeChild(buttonElement);
 									
 									const successMessage = document.createElement('p');
 									successMessage.textContent = 'Lead ' + leadID + ' has been updated.';
 									buttonElement.parentNode.appendChild(successMessage);
+								} else {
+									// Button element not found, display a message
+									alert('Lead ' + leadID + ' has been updated.');
+								}
 							})
 							.catch(error => {
 								alert('An error occurred: ' + error);
