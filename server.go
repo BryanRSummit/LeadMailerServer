@@ -320,11 +320,22 @@ func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"message": "Lead updated, emails will no longer be sent! %s"}`, leadID)
 }
 
+func logoutHandler(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "auth-session")
+	session.Options.MaxAge = -1                        // Set MaxAge to -1 to delete the cookie
+	session.Values = make(map[interface{}]interface{}) // Clear all session values
+	session.Save(r, w)
+
+	http.Redirect(w, r, "/", http.StatusSeeOther)
+}
+
 func main() {
 	http.HandleFunc("/", handleLeadMailer)
 	http.HandleFunc("/update-lead", updateLeadHandler)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/auth/google/callback", callbackHandler)
+	http.HandleFunc("/logout", logoutHandler)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
