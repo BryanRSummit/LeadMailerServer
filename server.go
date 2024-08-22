@@ -8,6 +8,10 @@ import (
 	"os"
 	"strings"
 
+	"encoding/json"
+
+	"github.com/gorilla/sessions"
+	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
@@ -20,6 +24,9 @@ var (
 	// PRODUCTION
 	spreadsheetID = "1HQfk8kbZuUdP7__nQ6CxQKw_BN9i-4P2so3iplLOU8U"
 	sheetName     = "Sheet1"
+
+	oauthConfig *oauth2.Config
+	store       *sessions.CookieStore
 )
 
 func init() {
@@ -30,8 +37,6 @@ func init() {
 	// // }
 	// Initialize Google Sheets API client
 	credJSON := os.Getenv("SHEETS_CREDS")
-	// Use the sheetsCreds value in your code
-	fmt.Println("SHEETS_CREDS:", credJSON)
 	if credJSON == "" {
 		log.Fatal("SHEETS_CREDS environment variable is not set")
 	}
@@ -50,6 +55,60 @@ func init() {
 	if err != nil {
 		log.Fatalf("Unable to create Sheets client: %v", err)
 	}
+
+	//auth config
+	oauthConfig = &oauth2.Config{
+		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
+		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
+		//RedirectURL:  "http://localhost:8080/auth/google/callback", // Update this with your domain
+		RedirectURL: os.Getenv("CALLBACK_URL"), // Update this with your domain
+		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.email"},
+		Endpoint:    google.Endpoint,
+	}
+
+	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	url := oauthConfig.AuthCodeURL("state", oauth2.AccessTypeOffline)
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+func callbackHandler(w http.ResponseWriter, r *http.Request) {
+	code := r.URL.Query().Get("code")
+	token, err := oauthConfig.Exchange(context.Background(), code)
+	if err != nil {
+		http.Error(w, "Failed to exchange token", http.StatusInternalServerError)
+		return
+	}
+
+	client := oauthConfig.Client(context.Background(), token)
+	resp, err := client.Get("https://www.googleapis.com/oauth2/v2/userinfo")
+	if err != nil {
+		http.Error(w, "Failed to get user info", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+
+	var userInfo struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
+		http.Error(w, "Failed to decode user info", http.StatusInternalServerError)
+		return
+	}
+
+	if !strings.HasSuffix(userInfo.Email, "@reddsummit.com") {
+		http.Error(w, "Unauthorized email domain", http.StatusUnauthorized)
+		return
+	}
+
+	session, _ := store.Get(r, "auth-session")
+	session.Values["authenticated"] = true
+	session.Values["email"] = userInfo.Email
+	session.Save(r, w)
+
+	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 }
 
 func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
@@ -57,6 +116,21 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	session, _ := store.Get(r, "auth-session")
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `
+            <html>
+                <body>
+                    <h1>Authentication Required</h1>
+                    <p>Please <a href="/login">log in</a> with your @reddsummit.com email to continue.</p>
+                </body>
+            </html>
+        `)
+		return
+	}
 
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusNoContent)
@@ -187,6 +261,13 @@ func updateLeadInSheet(leadID string) error {
 
 // New endpoint to handle the AJAX request
 func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
+	//auth
+	session, _ := store.Get(r, "auth-session")
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	leadID := r.URL.Query().Get("lead_id")
 	if leadID == "" {
 		http.Error(w, "Missing lead_id", http.StatusBadRequest)
@@ -207,6 +288,8 @@ func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	http.HandleFunc("/", handleLeadMailer)
 	http.HandleFunc("/update-lead", updateLeadHandler)
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/auth/google/callback", callbackHandler)
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
