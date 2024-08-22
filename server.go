@@ -8,10 +8,13 @@ import (
 	"os"
 	"strings"
 
+	firebase "firebase.google.com/go/v4"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
+
+var firebaseApp *firebase.App
 
 var (
 	sheetsService *sheets.Service
@@ -21,6 +24,32 @@ var (
 	spreadsheetID = "1HQfk8kbZuUdP7__nQ6CxQKw_BN9i-4P2so3iplLOU8U"
 	sheetName     = "Sheet1"
 )
+
+func authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.Background()
+		client, err := firebaseApp.Auth(ctx)
+		if err != nil {
+			http.Error(w, "Error getting Auth client", http.StatusInternalServerError)
+			return
+		}
+
+		idToken := r.Header.Get("Authorization")
+		if idToken == "" {
+			http.Error(w, "No ID token provided", http.StatusUnauthorized)
+			return
+		}
+
+		token, err := client.VerifyIDToken(ctx, idToken)
+		if err != nil {
+			http.Error(w, "Invalid ID token", http.StatusUnauthorized)
+			return
+		}
+
+		ctx = context.WithValue(r.Context(), "userID", token.UID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+}
 
 func init() {
 
@@ -50,6 +79,14 @@ func init() {
 	if err != nil {
 		log.Fatalf("Unable to create Sheets client: %v", err)
 	}
+
+	// Initialize Firebase
+	opt := option.WithCredentialsFile("path/to/your/firebase-adminsdk.json")
+	app, err := firebase.NewApp(context.Background(), nil, opt)
+	if err != nil {
+		log.Fatalf("error initializing app: %v\n", err)
+	}
+	firebaseApp = app
 }
 
 func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
@@ -64,65 +101,93 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Method == "GET" {
-		leadID := r.URL.Query().Get("lead_id")
-		if leadID == "" {
-			http.Error(w, "Missing lead_id", http.StatusBadRequest)
-			return
-		}
+		if r.Method == "GET" {
+			leadID := r.URL.Query().Get("lead_id")
+			if leadID == "" {
+				http.Error(w, "Missing lead_id", http.StatusBadRequest)
+				return
+			}
 
-		// err := updateLeadInSheet(leadID)
-		// if err != nil {
-		// 	http.Error(w, fmt.Sprintf("An error occurred: %v", err), http.StatusInternalServerError)
-		// 	return
-		// }
-
-		w.Header().Set("Content-Type", "text/html")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `
-			<html>
-				<body>
-				<h1 style="font-size: 24px;">Confirm That You Wish to Give Up Lead!</h1>
-				<p><b style="font-size: 20px;">This is a permanent Action! Lead: %s</b></p>
-				<div>Identity Platform Quickstart</div>
-				<div id="message">Loading...</div>
-				<button 
-					onclick="confirmUpdate('%s')" 
-					style="font-size: 36px; padding: 20px 40px; border-radius: 10px; background-color: #007BFF; color: white; border: none; cursor: pointer;">
-					Confirm
-				</button>
-					<script>
-						function confirmUpdate(leadID) {
-							// Make an AJAX request to the server to update the lead
-							fetch('/update-lead?lead_id=' + leadID, {
-								method: 'GET',
-								headers: {
-									'Content-Type': 'application/json'
-								}
-							})
-							.then(response => response.json())
-							.then(data => {
-								// Find the button element
-								const buttonElement = document.querySelector('button[onclick="confirmUpdate(\'' + leadID + '\')"]');
-
-								if (buttonElement) {
-									// Remove the button and show a success message
-									const successMessage = document.createElement('p');
-									successMessage.style.fontSize = '18px';
-									successMessage.textContent = 'Lead ' + leadID + ' has been updated.';
-									buttonElement.parentNode.replaceChild(successMessage, buttonElement);
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, `
+				<html>
+					<head>
+						<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+						<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+					</head>
+					<body>
+						<h1 style="font-size: 24px;">Confirm That You Wish to Give Up Lead!</h1>
+						<p><b style="font-size: 20px;">This is a permanent Action! Lead: %s</b></p>
+						<div id="message">Loading...</div>
+						<button id="signInButton" style="font-size: 24px; padding: 10px 20px; display: none;">Sign In with Google</button>
+						<button id="confirmButton" 
+							style="font-size: 36px; padding: 20px 40px; border-radius: 10px; background-color: #007BFF; color: white; border: none; cursor: pointer; display: none;">
+							Confirm
+						</button>
+						<script>
+							// Initialize Firebase
+							const firebaseConfig = {
+								// Your web app's Firebase configuration
+								// You'll need to replace this with your actual Firebase config
+								apiKey: "YOUR_API_KEY",
+								authDomain: "YOUR_AUTH_DOMAIN",
+								projectId: "YOUR_PROJECT_ID",
+								// ... other config options ...
+							};
+							firebase.initializeApp(firebaseConfig);
+	
+							const signInButton = document.getElementById('signInButton');
+							const confirmButton = document.getElementById('confirmButton');
+							const messageDiv = document.getElementById('message');
+	
+							firebase.auth().onAuthStateChanged(function(user) {
+								if (user) {
+									signInButton.style.display = 'none';
+									confirmButton.style.display = 'block';
+									messageDiv.textContent = 'Signed in as ' + user.email;
 								} else {
-									// Button element not found, display a message without modifying the DOM
-									alert('Lead ' + leadID + ' has been updated.');
+									signInButton.style.display = 'block';
+									confirmButton.style.display = 'none';
+									messageDiv.textContent = 'Please sign in to continue';
 								}
-							})
-							.catch(error => {
-								alert('An error occurred: ' + error);
 							});
-						}
-					</script>
-				</body>
-			</html>
-		`, leadID, leadID)
+	
+							signInButton.onclick = function() {
+								const provider = new firebase.auth.GoogleAuthProvider();
+								firebase.auth().signInWithPopup(provider);
+							};
+	
+							confirmButton.onclick = function() {
+								firebase.auth().currentUser.getIdToken(true).then(function(idToken) {
+									confirmUpdate('%s', idToken);
+								}).catch(function(error) {
+									console.error('Error getting ID token:', error);
+								});
+							};
+	
+							function confirmUpdate(leadID, idToken) {
+								fetch('/update-lead?lead_id=' + leadID, {
+									method: 'GET',
+									headers: {
+										'Content-Type': 'application/json',
+										'Authorization': idToken
+									}
+								})
+								.then(response => response.json())
+								.then(data => {
+									messageDiv.textContent = 'Lead ' + leadID + ' has been updated.';
+									confirmButton.style.display = 'none';
+								})
+								.catch(error => {
+									messageDiv.textContent = 'An error occurred: ' + error;
+								});
+							}
+						</script>
+					</body>
+				</html>
+			`, leadID, leadID)
+		}
 
 	} else if r.Method == "POST" {
 		leadID := r.URL.Query().Get("lead_id")
@@ -205,8 +270,8 @@ func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", handleLeadMailer)
-	http.HandleFunc("/update-lead", updateLeadHandler)
+	http.HandleFunc("/", handleLeadMailer) // This doesn't need auth as it serves the login page
+	http.HandleFunc("/update-lead", authMiddleware(updateLeadHandler))
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
