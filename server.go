@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -70,11 +71,33 @@ func init() {
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-	url := oauthConfig.AuthCodeURL("state", oauth2.AccessTypeOffline)
+	leadID := r.URL.Query().Get("lead_id")
+	state := generateStateToken(leadID) // We'll implement this function
+	url := oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
 
+func generateStateToken(leadID string) string {
+	return base64.URLEncoding.EncodeToString([]byte(leadID))
+}
+
+func getLeadIDFromState(state string) (string, error) {
+	decoded, err := base64.URLEncoding.DecodeString(state)
+	if err != nil {
+		return "", err
+	}
+	return string(decoded), nil
+}
+
 func callbackHandler(w http.ResponseWriter, r *http.Request) {
+	//needed to pass lead_id
+	state := r.URL.Query().Get("state")
+	leadID, err := getLeadIDFromState(state)
+	if err != nil {
+		http.Error(w, "Invalid state parameter", http.StatusBadRequest)
+		return
+	}
+
 	code := r.URL.Query().Get("code")
 	token, err := oauthConfig.Exchange(context.Background(), code)
 	if err != nil {
@@ -106,9 +129,11 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "auth-session")
 	session.Values["authenticated"] = true
 	session.Values["email"] = userInfo.Email
+	session.Values["lead_id"] = leadID // Store the lead_id in the session
 	session.Save(r, w)
 
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	// Redirect to the update page with the lead_id
+	http.Redirect(w, r, fmt.Sprintf("/update-lead?lead_id=%s", leadID), http.StatusTemporaryRedirect)
 }
 
 func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
@@ -116,6 +141,12 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	leadID := r.URL.Query().Get("lead_id")
+	if leadID == "" {
+		http.Error(w, "Missing lead_id", http.StatusBadRequest)
+		return
+	}
 
 	session, _ := store.Get(r, "auth-session")
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
@@ -125,10 +156,10 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
             <html>
                 <body>
                     <h1>Authentication Required</h1>
-                    <p>Please <a href="/login">log in</a> with your @reddsummit.com email to continue.</p>
+                    <p>Please <a href="/login?lead_id=%s">log in</a> with your @reddsummit.com email to continue.</p>
                 </body>
             </html>
-        `)
+        `, leadID)
 		return
 	}
 
@@ -261,7 +292,7 @@ func updateLeadInSheet(leadID string) error {
 
 // New endpoint to handle the AJAX request
 func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
-	//auth
+	//passing on lead_id
 	session, _ := store.Get(r, "auth-session")
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -270,8 +301,12 @@ func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
 
 	leadID := r.URL.Query().Get("lead_id")
 	if leadID == "" {
-		http.Error(w, "Missing lead_id", http.StatusBadRequest)
-		return
+		// If lead_id is not in the URL, try to get it from the session
+		leadID, ok := session.Values["lead_id"].(string)
+		if !ok || leadID == "" {
+			http.Error(w, "Missing lead_id", http.StatusBadRequest)
+			return
+		}
 	}
 
 	err := updateLeadInSheet(leadID)
