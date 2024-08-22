@@ -329,12 +329,24 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
+func router(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	switch {
+	case path == "/" || strings.HasPrefix(path, "/update-lead"):
+		handleLeadMailer(w, r)
+	case path == "/login":
+		loginHandler(w, r)
+	case path == "/auth/google/callback":
+		callbackHandler(w, r)
+	case path == "/logout":
+		logoutHandler(w, r)
+	default:
+		http.NotFound(w, r)
+	}
+}
+
 func main() {
-	http.HandleFunc("/", handleLeadMailer)
-	http.HandleFunc("/update-lead", updateLeadHandler)
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/auth/google/callback", callbackHandler)
-	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/", router)
 
 	port := os.Getenv("PORT")
 	if port == "" {
