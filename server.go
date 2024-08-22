@@ -83,6 +83,8 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 				<body>
 				<h1 style="font-size: 24px;">Confirm That You Wish to Give Up Lead!</h1>
 				<p><b style="font-size: 20px;">This is a permanent Action! Lead: %s</b></p>
+				<div>Identity Platform Quickstart</div>
+				<div id="message">Loading...</div>
 				<button 
 					onclick="confirmUpdate('%s')" 
 					style="font-size: 36px; padding: 20px 40px; border-radius: 10px; background-color: #007BFF; color: white; border: none; cursor: pointer;">
