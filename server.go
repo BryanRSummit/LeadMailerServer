@@ -111,82 +111,74 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(http.StatusOK)
 			fmt.Fprintf(w, `
-				<html>
-					<head>
-						<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-						<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-					</head>
-					<body>
-						<h1 style="font-size: 24px;">Confirm That You Wish to Give Up Lead!</h1>
-						<p><b style="font-size: 20px;">This is a permanent Action! Lead: %s</b></p>
-						<div id="message">Loading...</div>
-						<button id="signInButton" style="font-size: 24px; padding: 10px 20px; display: none;">Sign In with Google</button>
-						<button id="confirmButton" 
-							style="font-size: 36px; padding: 20px 40px; border-radius: 10px; background-color: #007BFF; color: white; border: none; cursor: pointer; display: none;">
-							Confirm
-						</button>
-						<script>
-							// Initialize Firebase
-							const firebaseConfig = {
-								// Your web app's Firebase configuration
-								// You'll need to replace this with your actual Firebase config
-								apiKey: "YOUR_API_KEY",
-								authDomain: "YOUR_AUTH_DOMAIN",
-								projectId: "YOUR_PROJECT_ID",
-								// ... other config options ...
-							};
-							firebase.initializeApp(firebaseConfig);
-	
-							const signInButton = document.getElementById('signInButton');
-							const confirmButton = document.getElementById('confirmButton');
-							const messageDiv = document.getElementById('message');
-	
-							firebase.auth().onAuthStateChanged(function(user) {
-								if (user) {
-									signInButton.style.display = 'none';
-									confirmButton.style.display = 'block';
-									messageDiv.textContent = 'Signed in as ' + user.email;
-								} else {
-									signInButton.style.display = 'block';
-									confirmButton.style.display = 'none';
-									messageDiv.textContent = 'Please sign in to continue';
-								}
-							});
-	
-							signInButton.onclick = function() {
-								const provider = new firebase.auth.GoogleAuthProvider();
-								firebase.auth().signInWithPopup(provider);
-							};
-	
-							confirmButton.onclick = function() {
-								firebase.auth().currentUser.getIdToken(true).then(function(idToken) {
-									confirmUpdate('%s', idToken);
-								}).catch(function(error) {
-									console.error('Error getting ID token:', error);
-								});
-							};
-	
-							function confirmUpdate(leadID, idToken) {
-								fetch('/update-lead?lead_id=' + leadID, {
-									method: 'GET',
-									headers: {
-										'Content-Type': 'application/json',
-										'Authorization': idToken
-									}
-								})
-								.then(response => response.json())
-								.then(data => {
-									messageDiv.textContent = 'Lead ' + leadID + ' has been updated.';
-									confirmButton.style.display = 'none';
-								})
-								.catch(error => {
-									messageDiv.textContent = 'An error occurred: ' + error;
-								});
-							}
-						</script>
-					</body>
-				</html>
-			`, leadID, leadID)
+            <html>
+                <head>
+                    <script src="https://accounts.google.com/gsi/client" async defer></script>
+                </head>
+                <body>
+                    <h1 style="font-size: 24px;">Confirm That You Wish to Give Up Lead!</h1>
+                    <p><b style="font-size: 20px;">This is a permanent Action! Lead: %s</b></p>
+                    <div id="message">Loading...</div>
+                    <div id="g_id_onload"
+                         data-client_id="YOUR_GOOGLE_CLIENT_ID"
+                         data-callback="handleCredentialResponse">
+                    </div>
+                    <div class="g_id_signin" data-type="standard"></div>
+                    <button id="confirmButton" 
+                        style="font-size: 36px; padding: 20px 40px; border-radius: 10px; background-color: #007BFF; color: white; border: none; cursor: pointer; display: none;">
+                        Confirm
+                    </button>
+                    <script>
+                        const confirmButton = document.getElementById('confirmButton');
+                        const messageDiv = document.getElementById('message');
+
+                        function handleCredentialResponse(response) {
+                            // Send the ID token to your server
+                            fetch('/verify-token', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({token: response.credential})
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    confirmButton.style.display = 'block';
+                                    messageDiv.textContent = 'Signed in successfully';
+                                } else {
+                                    messageDiv.textContent = 'Authentication failed';
+                                }
+                            })
+                            .catch(error => {
+                                messageDiv.textContent = 'An error occurred: ' + error;
+                            });
+                        }
+
+                        confirmButton.onclick = function() {
+                            confirmUpdate('%s');
+                        };
+
+                        function confirmUpdate(leadID) {
+                            fetch('/update-lead?lead_id=' + leadID, {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                messageDiv.textContent = 'Lead ' + leadID + ' has been updated.';
+                                confirmButton.style.display = 'none';
+                            })
+                            .catch(error => {
+                                messageDiv.textContent = 'An error occurred: ' + error;
+                            });
+                        }
+                    </script>
+                </body>
+            </html>
+        `, leadID, leadID)
 		}
 
 	} else if r.Method == "POST" {
