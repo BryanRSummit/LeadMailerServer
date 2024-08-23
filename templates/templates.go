@@ -73,28 +73,24 @@ func GetConfirmHTML(leadID string) string {
 							fetch('/update-lead?lead_id=' + leadID, {
 								method: 'GET',
 								headers: {
-									'Content-Type': 'application/json'
+									'Accept': 'text/html'
 								}
 							})
-							.then(response => response.json())
-							.then(data => {
-								// Find the button element
-								const buttonElement = document.querySelector('button[onclick="confirmUpdate(\'' + leadID + '\')"]');
-
-								if (buttonElement) {
-									// Remove the button and show a success message
-									const successMessage = document.createElement('p');
-									successMessage.style.fontSize = '18px';
-									successMessage.textContent = 'Lead ' + leadID + ' has been updated.';
-									buttonElement.parentNode.replaceChild(successMessage, buttonElement);
-								} else {
-									// Button element not found, display a message without modifying the DOM
-									alert('Lead ' + leadID + ' has been updated.');
-								}
-							})
-							.catch(error => {
-								alert('An error occurred: ' + error);
-							});
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Network response was not ok');
+                                }
+                                return response.text(); // Use text() instead of json() for HTML response
+                            })
+                            .then(html => {
+                                // Replace the entire page content with the new HTML
+                                document.open();
+                                document.write(html);
+                                document.close();
+                            })
+                            .catch(error => {
+                                alert('An error occurred: ' + error);
+                            });
 						}
 					</script>
 				</body>

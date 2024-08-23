@@ -263,7 +263,7 @@ func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	leadUpdatedHTML := templates.GetLeadUpdatedHTML(leadID)
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, leadUpdatedHTML)
 }
@@ -275,7 +275,7 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 
 	loggedOutHTML := templates.GetLoggedOutMessage()
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, loggedOutHTML)
 }
