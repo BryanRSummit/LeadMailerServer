@@ -320,7 +320,9 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	session.Values = make(map[interface{}]interface{}) // Clear all session values
 	session.Save(r, w)
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"message": "You have been logged out!"}`)
 }
 
 func main() {
