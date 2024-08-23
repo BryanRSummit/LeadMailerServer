@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 
-	"encoding/json"
+	"github.com/BryanRSummit/LeadMailerServer/templates"
 
 	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
@@ -155,16 +156,10 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 
 	session, _ := store.Get(r, "auth-session")
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		unauthenticatedHTML := templates.GetUnauthenticatedHTML(leadID)
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `
-            <html>
-                <body>
-                    <h1>Authentication Required</h1>
-                    <p>Please <a href="/login?lead_id=%s">log in</a> with your @reddsummit.com email to continue.</p>
-                </body>
-            </html>
-        `, leadID)
+		fmt.Fprint(w, unauthenticatedHTML)
 		return
 	}
 
@@ -175,59 +170,17 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		confirmHTML := templates.GetConfirmHTML(leadID)
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `
-			<html>
-				<body>
-				<h1 style="font-size: 24px;">Confirm That You Wish to Give Up Lead!</h1>
-				<p><b style="font-size: 20px;">This is a permanent Action! Lead: %s</b></p>
-				<div>Identity Platform Quickstart</div>
-				<div id="message">Loading...</div>
-				<button 
-					onclick="confirmUpdate('%s')" 
-					style="font-size: 36px; padding: 20px 40px; border-radius: 10px; background-color: #007BFF; color: white; border: none; cursor: pointer;">
-					Confirm
-				</button>
-					<script>
-						function confirmUpdate(leadID) {
-							// Make an AJAX request to the server to update the lead
-							fetch('/update-lead?lead_id=' + leadID, {
-								method: 'GET',
-								headers: {
-									'Content-Type': 'application/json'
-								}
-							})
-							.then(response => response.json())
-							.then(data => {
-								// Find the button element
-								const buttonElement = document.querySelector('button[onclick="confirmUpdate(\'' + leadID + '\')"]');
-
-								if (buttonElement) {
-									// Remove the button and show a success message
-									const successMessage = document.createElement('p');
-									successMessage.style.fontSize = '18px';
-									successMessage.textContent = 'Lead ' + leadID + ' has been updated.';
-									buttonElement.parentNode.replaceChild(successMessage, buttonElement);
-								} else {
-									// Button element not found, display a message without modifying the DOM
-									alert('Lead ' + leadID + ' has been updated.');
-								}
-							})
-							.catch(error => {
-								alert('An error occurred: ' + error);
-							});
-						}
-					</script>
-				</body>
-			</html>
-		`, leadID, leadID)
+		fmt.Fprint(w, confirmHTML)
 
 	} else if r.Method == "POST" {
 		leadID := r.URL.Query().Get("lead_id")
+		postReqHTML := templates.GetPostRequestHTML(leadID)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"message": "POST request received, to update lead use GET %s"}`, leadID)
+		fmt.Fprint(w, postReqHTML)
 	} else {
 		http.Error(w, "Unsupported method", http.StatusMethodNotAllowed)
 	}
@@ -309,9 +262,10 @@ func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	leadUpdatedHTML := templates.GetLeadUpdatedHTML(leadID)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"message": "Lead updated, emails will no longer be sent! %s"}`, leadID)
+	fmt.Fprint(w, leadUpdatedHTML)
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -320,9 +274,10 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	session.Values = make(map[interface{}]interface{}) // Clear all session values
 	session.Save(r, w)
 
+	loggedOutHTML := templates.GetLoggedOutMessage()
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"message": "You have been logged out!"}`)
+	fmt.Fprint(w, loggedOutHTML)
 }
 
 func main() {
