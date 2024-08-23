@@ -46,13 +46,52 @@ func GetLeadUpdatedHTML(leadID string) string {
 
 func GetUnauthenticatedHTML(leadID string) string {
 	return fmt.Sprintf(`
-            <html>
-                <body>
-                    <h1>Authentication Required</h1>
-                    <p>Please <a href="/login?lead_id=%s">log in</a> with your @reddsummit.com email to continue.</p>
-                </body>
-            </html>
-        `, leadID)
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Authentication Required</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding-top: 50px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #ffffff;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                border-radius: 8px;
+            }
+            h1 {
+                font-size: 48px;
+                color: #333333;
+            }
+            p {
+                font-size: 20px;
+                color: #666666;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Authentication Required</h1>
+            <p>Please <a href="/login?lead_id=%s">log in</a> with your Redd Summit email to continue.</p>
+        </div>
+    </body>
+    </html>
+    `, leadID)
+	// return fmt.Sprintf(`
+	//         <html>
+	//             <body>
+	//                 <h1>Authentication Required</h1>
+	//                 <p>Please <a href="/login?lead_id=%s">log in</a> with your @reddsummit.com email to continue.</p>
+	//             </body>
+	//         </html>
+	//     `, leadID)
 }
 
 // Function to get the HTML content
