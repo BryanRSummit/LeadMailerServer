@@ -133,7 +133,7 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 
 	// Redirect to the update page with the lead_id
-	http.Redirect(w, r, fmt.Sprintf("/update-lead?lead_id=%s", leadID), http.StatusTemporaryRedirect)
+	http.Redirect(w, r, fmt.Sprintf("/?lead_id=%s", leadID), http.StatusTemporaryRedirect)
 }
 
 func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
