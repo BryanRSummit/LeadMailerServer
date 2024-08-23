@@ -148,6 +148,11 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	session, _ := store.Get(r, "auth-session")
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
 		w.Header().Set("Content-Type", "text/html")
@@ -163,23 +168,12 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == "OPTIONS" {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
 	if r.Method == "GET" {
 		leadID := r.URL.Query().Get("lead_id")
 		if leadID == "" {
 			http.Error(w, "Missing lead_id", http.StatusBadRequest)
 			return
 		}
-
-		// err := updateLeadInSheet(leadID)
-		// if err != nil {
-		// 	http.Error(w, fmt.Sprintf("An error occurred: %v", err), http.StatusInternalServerError)
-		// 	return
-		// }
 
 		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
@@ -329,24 +323,12 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-func router(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	switch {
-	case path == "/" || strings.HasPrefix(path, "/update-lead"):
-		handleLeadMailer(w, r)
-	case path == "/login":
-		loginHandler(w, r)
-	case path == "/auth/google/callback":
-		callbackHandler(w, r)
-	case path == "/logout":
-		logoutHandler(w, r)
-	default:
-		http.NotFound(w, r)
-	}
-}
-
 func main() {
-	http.HandleFunc("/", router)
+	http.HandleFunc("/", handleLeadMailer)
+	http.HandleFunc("/update-lead", updateLeadHandler)
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/auth/google/callback", callbackHandler)
+	http.HandleFunc("/logout", logoutHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
