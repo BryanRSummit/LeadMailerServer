@@ -12,6 +12,7 @@ import (
 
 	"github.com/BryanRSummit/LeadMailerServer/templates"
 	"github.com/gorilla/sessions"
+	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
@@ -67,6 +68,14 @@ func init() {
 		log.Fatalf("Unable to create Sheets client: %v", err)
 	}
 
+	// Load .env.local file
+	if err := godotenv.Load(".env.local"); err != nil {
+		log.Println("Error loading .env.local file. Falling back to .env")
+		// Attempt to load .env file as fallback
+		if err := godotenv.Load(); err != nil {
+			log.Println("Error loading .env file. Using system environment variables.")
+		}
+	}
 	//auth config
 	oauthConfig = &oauth2.Config{
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
