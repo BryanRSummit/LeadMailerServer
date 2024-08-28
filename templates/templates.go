@@ -278,6 +278,92 @@ func GetMissingIdMessage() string {
     <body>
         <div class="container">
             <h1>You Must Provide a Lead Id!</h1>
+            <h2>Close this Window and try again, something has gone wrong!</h2>
+            <p>Thank you for visiting. Created by Bryan Edman.</p>
+        </div>
+    </body>
+    </html>
+    `
+}
+
+func GetUnauthorizedEmailDomain() string {
+	return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Unauthorized Email Domain</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding-top: 50px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #ffffff;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                border-radius: 8px;
+            }
+            h1 {
+                font-size: 48px;
+                color: #333333;
+            }
+            p {
+                font-size: 20px;
+                color: #666666;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Unauthorized Email Domain!</h1>
+            <h3>This application is restricted to members of Redd Summit.</h3>
+            <p>Thank you for visiting. Created by Bryan Edman.</p>
+        </div>
+    </body>
+    </html>
+    `
+}
+
+func GetAlreadyLoggedOut() string {
+	return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Already Logged Out</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding-top: 50px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #ffffff;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                border-radius: 8px;
+            }
+            h1 {
+                font-size: 48px;
+                color: #333333;
+            }
+            p {
+                font-size: 20px;
+                color: #666666;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Already Logged Out!</h1>
             <p>Thank you for visiting. Created by Bryan Edman.</p>
         </div>
     </body>
