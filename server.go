@@ -280,12 +280,17 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, loggedOutHTML)
 }
 
+func saveprefereances(w http.ResponseWriter, r *http.Request) {
+
+}
+
 func main() {
 	http.HandleFunc("/", handleLeadMailer)
 	http.HandleFunc("/update-lead", updateLeadHandler)
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/auth/google/callback", callbackHandler)
 	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/preferences", saveprefereances)
 
 	port := os.Getenv("PORT")
 	if port == "" {
