@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/BryanRSummit/LeadMailerServer/templates"
-
 	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -33,22 +32,32 @@ var (
 
 func init() {
 
-	// // // Load .env file
-	// // if err := godotenv.Load(); err != nil {
-	// // 	fmt.Println("Error loading .env file")
-	// // }
-	// Initialize Google Sheets API client
-	credJSON := os.Getenv("SHEETS_CREDS")
-	if credJSON == "" {
-		log.Fatal("SHEETS_CREDS environment variable is not set")
-	}
+	// //--------SHEETS_CREDS PROD----------------------------------------------------------
+	// // Initialize Google Sheets API client
+	// credJSON := os.Getenv("SHEETS_CREDS")
+	// if credJSON == "" {
+	// 	log.Fatal("SHEETS_CREDS environment variable is not set")
+	// }
 
-	credBytes := []byte(credJSON)
+	// credBytes := []byte(credJSON)
+
+	// config, err := google.JWTConfigFromJSON(credBytes, sheets.SpreadsheetsScope)
+	// if err != nil {
+	// 	log.Fatalf("Unable to parse credentials: %v", err)
+	// }
+	// //--------END SHEETS_CREDS PROD----------------------------------------------------------
+
+	//---------SHEETS CREDS LOCAL---------------------------------------------------------------
+	credBytes, err := os.ReadFile("agentcontactcount-01c64e5317e2.json")
+	if err != nil {
+		log.Fatalf("Unable to read credentials file: %v", err)
+	}
 
 	config, err := google.JWTConfigFromJSON(credBytes, sheets.SpreadsheetsScope)
 	if err != nil {
 		log.Fatalf("Unable to parse credentials: %v", err)
 	}
+	//---------END SHEETS_CREDS LOCAL-----------------------------------------------------------
 
 	ctx := context.Background()
 	client := config.Client(ctx)
@@ -62,10 +71,9 @@ func init() {
 	oauthConfig = &oauth2.Config{
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		//RedirectURL:  "http://localhost:8080/auth/google/callback", // Update this with your domain
-		RedirectURL: os.Getenv("CALLBACK_URL"), // Update this with your domain
-		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.email"},
-		Endpoint:    google.Endpoint,
+		RedirectURL:  os.Getenv("CALLBACK_URL"),
+		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
+		Endpoint:     google.Endpoint,
 	}
 
 	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
@@ -145,7 +153,10 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 
 	leadID := r.URL.Query().Get("lead_id")
 	if leadID == "" {
-		http.Error(w, "Missing lead_id", http.StatusBadRequest)
+		missingIdHTML := templates.GetMissingIdMessage()
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, missingIdHTML)
 		return
 	}
 
@@ -166,7 +177,10 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		leadID := r.URL.Query().Get("lead_id")
 		if leadID == "" {
-			http.Error(w, "Missing lead_id", http.StatusBadRequest)
+			missingIdHTML := templates.GetMissingIdMessage()
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, missingIdHTML)
 			return
 		}
 
@@ -251,7 +265,10 @@ func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
 		// If lead_id is not in the URL, try to get it from the session
 		leadID, ok := session.Values["lead_id"].(string)
 		if !ok || leadID == "" {
-			http.Error(w, "Missing lead_id", http.StatusBadRequest)
+			missingIdHTML := templates.GetMissingIdMessage()
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, missingIdHTML)
 			return
 		}
 	}

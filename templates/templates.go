@@ -242,3 +242,45 @@ func GetLoggedOutMessage() string {
     </html>
     `
 }
+
+func GetMissingIdMessage() string {
+	return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Missing Lead Id</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding-top: 50px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #ffffff;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                border-radius: 8px;
+            }
+            h1 {
+                font-size: 48px;
+                color: #333333;
+            }
+            p {
+                font-size: 20px;
+                color: #666666;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>You Must Provide a Lead Id!</h1>
+            <p>Thank you for visiting. Created by Bryan Edman.</p>
+        </div>
+    </body>
+    </html>
+    `
+}
