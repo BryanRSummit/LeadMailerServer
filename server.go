@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/BryanRSummit/LeadMailerServer/templates"
-
 	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -33,10 +32,7 @@ var (
 
 func init() {
 
-	// // // Load .env file
-	// // if err := godotenv.Load(); err != nil {
-	// // 	fmt.Println("Error loading .env file")
-	// // }
+	//--------SHEETS_CREDS PROD----------------------------------------------------------
 	// Initialize Google Sheets API client
 	credJSON := os.Getenv("SHEETS_CREDS")
 	if credJSON == "" {
@@ -49,6 +45,19 @@ func init() {
 	if err != nil {
 		log.Fatalf("Unable to parse credentials: %v", err)
 	}
+	//--------END SHEETS_CREDS PROD----------------------------------------------------------
+
+	// //---------SHEETS CREDS LOCAL---------------------------------------------------------------
+	// credBytes, err := os.ReadFile("agentcontactcount-01c64e5317e2.json")
+	// if err != nil {
+	// 	log.Fatalf("Unable to read credentials file: %v", err)
+	// }
+
+	// config, err := google.JWTConfigFromJSON(credBytes, sheets.SpreadsheetsScope)
+	// if err != nil {
+	// 	log.Fatalf("Unable to parse credentials: %v", err)
+	// }
+	// //---------END SHEETS_CREDS LOCAL-----------------------------------------------------------
 
 	ctx := context.Background()
 	client := config.Client(ctx)
@@ -58,21 +67,39 @@ func init() {
 		log.Fatalf("Unable to create Sheets client: %v", err)
 	}
 
+	// //-------LOCAL ENV - COMMENT OUT FOR PROD----------------------------------------
+	// // Load .env.local file
+	// if err := godotenv.Load(".env.local"); err != nil {
+	// 	log.Println("Error loading .env.local file. Falling back to .env")
+	// 	// Attempt to load .env file as fallback
+	// 	if err := godotenv.Load(); err != nil {
+	// 		log.Println("Error loading .env file. Using system environment variables.")
+	// 	}
+	// }
+	// //-------LOCAL ENV - COMMENT OUT FOR PROD----------------------------------------
+
 	//auth config
 	oauthConfig = &oauth2.Config{
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		ClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		//RedirectURL:  "http://localhost:8080/auth/google/callback", // Update this with your domain
-		RedirectURL: os.Getenv("CALLBACK_URL"), // Update this with your domain
-		Scopes:      []string{"https://www.googleapis.com/auth/userinfo.email"},
-		Endpoint:    google.Endpoint,
+		RedirectURL:  os.Getenv("CALLBACK_URL"),
+		Scopes:       []string{"https://www.googleapis.com/auth/userinfo.email"},
+		Endpoint:     google.Endpoint,
 	}
 
 	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
-}
+} // end init
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	leadID := r.URL.Query().Get("lead_id")
+	if leadID == "" {
+		missingIdHTML := templates.GetMissingIdMessage()
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, missingIdHTML)
+		return
+	}
+
 	state := generateStateToken(leadID) // We'll implement this function
 	url := oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOffline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
@@ -123,7 +150,10 @@ func callbackHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !strings.HasSuffix(userInfo.Email, "@reddsummit.com") {
-		http.Error(w, "Unauthorized email domain", http.StatusUnauthorized)
+		unauthorizedHTML := templates.GetUnauthorizedEmailDomain()
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, unauthorizedHTML)
 		return
 	}
 
@@ -145,7 +175,10 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 
 	leadID := r.URL.Query().Get("lead_id")
 	if leadID == "" {
-		http.Error(w, "Missing lead_id", http.StatusBadRequest)
+		missingIdHTML := templates.GetMissingIdMessage()
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, missingIdHTML)
 		return
 	}
 
@@ -166,7 +199,10 @@ func handleLeadMailer(w http.ResponseWriter, r *http.Request) {
 	if r.Method == "GET" {
 		leadID := r.URL.Query().Get("lead_id")
 		if leadID == "" {
-			http.Error(w, "Missing lead_id", http.StatusBadRequest)
+			missingIdHTML := templates.GetMissingIdMessage()
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, missingIdHTML)
 			return
 		}
 
@@ -251,7 +287,10 @@ func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
 		// If lead_id is not in the URL, try to get it from the session
 		leadID, ok := session.Values["lead_id"].(string)
 		if !ok || leadID == "" {
-			http.Error(w, "Missing lead_id", http.StatusBadRequest)
+			missingIdHTML := templates.GetMissingIdMessage()
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, missingIdHTML)
 			return
 		}
 	}
@@ -269,15 +308,48 @@ func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "auth-session")
+	session, err := store.Get(r, "auth-session")
+	if err != nil {
+		http.Error(w, "Session error", http.StatusInternalServerError)
+		return
+	}
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		alreadyLoggedOutHTML := templates.GetAlreadyLoggedOut()
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, alreadyLoggedOutHTML)
+		return
+	}
+
+	//clear session
 	session.Options.MaxAge = -1                        // Set MaxAge to -1 to delete the cookie
 	session.Values = make(map[interface{}]interface{}) // Clear all session values
-	session.Save(r, w)
 
-	loggedOutHTML := templates.GetLoggedOutMessage()
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, loggedOutHTML)
+	// Ensure cookie is secure and HTTP-only
+	session.Options.Secure = true // Only use this if your site is HTTPS
+	session.Options.HttpOnly = true
+
+	// Save session (which will delete the cookie)
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Failed to save session", http.StatusInternalServerError)
+		return
+	}
+
+	// loggedOutHTML := templates.GetLoggedOutMessage()
+	// w.Header().Set("Content-Type", "text/html")
+	// w.WriteHeader(http.StatusOK)
+	// fmt.Fprint(w, loggedOutHTML)
+
+	// Redirect to login page or home page
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+func savepreferences(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "auth-session")
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 }
 
 func main() {
@@ -286,6 +358,7 @@ func main() {
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/auth/google/callback", callbackHandler)
 	http.HandleFunc("/logout", logoutHandler)
+	http.HandleFunc("/preferences", savepreferences)
 
 	port := os.Getenv("PORT")
 	if port == "" {
