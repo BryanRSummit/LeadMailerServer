@@ -69,7 +69,7 @@ func init() {
 	}
 
 	store = sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
-}
+} // end init
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	leadID := r.URL.Query().Get("lead_id")
@@ -269,19 +269,45 @@ func updateLeadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
-	session, _ := store.Get(r, "auth-session")
+	session, err := store.Get(r, "auth-session")
+	if err != nil {
+		http.Error(w, "Session error", http.StatusInternalServerError)
+		return
+	}
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		http.Error(w, "You're already logged out!", http.StatusUnauthorized)
+		return
+	}
+
+	//clear session
 	session.Options.MaxAge = -1                        // Set MaxAge to -1 to delete the cookie
 	session.Values = make(map[interface{}]interface{}) // Clear all session values
-	session.Save(r, w)
 
-	loggedOutHTML := templates.GetLoggedOutMessage()
-	w.Header().Set("Content-Type", "text/html")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, loggedOutHTML)
+	// Ensure cookie is secure and HTTP-only
+	session.Options.Secure = true // Only use this if your site is HTTPS
+	session.Options.HttpOnly = true
+
+	// Save session (which will delete the cookie)
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Failed to save session", http.StatusInternalServerError)
+		return
+	}
+
+	// loggedOutHTML := templates.GetLoggedOutMessage()
+	// w.Header().Set("Content-Type", "text/html")
+	// w.WriteHeader(http.StatusOK)
+	// fmt.Fprint(w, loggedOutHTML)
+
+	// Redirect to login page or home page
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-func saveprefereances(w http.ResponseWriter, r *http.Request) {
-
+func savepreferences(w http.ResponseWriter, r *http.Request) {
+	session, _ := store.Get(r, "auth-session")
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 }
 
 func main() {
@@ -290,7 +316,7 @@ func main() {
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/auth/google/callback", callbackHandler)
 	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/preferences", saveprefereances)
+	http.HandleFunc("/preferences", savepreferences)
 
 	port := os.Getenv("PORT")
 	if port == "" {
