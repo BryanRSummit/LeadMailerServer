@@ -400,6 +400,29 @@ func GetDateSelectHTML(leadID string) string {
                 color: #666666;
                 margin-top: 20px;
             }
+            button {
+                font-size: 24px;
+                padding: 10px 20px;
+                margin-top: 20px;
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            button:hover {
+                background-color: #45a049;
+            }
+            input[type="date"] {
+                font-size: 24px;
+                padding: 10px;
+                width: 100%%;
+                max-width: 400px;
+                box-sizing: border-box;
+                border-radius: 4px;
+                border: 1px solid #ccc;
+                margin-top: 20px;
+            }
         </style>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
