@@ -408,10 +408,12 @@ func GetDateSelectHTML(leadID string) string {
     </head>
         <body>
             <h1>Select a Date</h1>
-            <form id="dateForm">
-                <input type="date" id="selectedDate" required>
-                <button type="submit">Submit</button>
-            </form>
+            <div class="container">
+                <form id="dateForm">
+                    <input type="date" id="selectedDate" required>
+                    <button type="submit">Submit</button>
+                </form>
+            </div
 
             <script>
                 const leadId = "%s";
