@@ -370,3 +370,110 @@ func GetAlreadyLoggedOut() string {
     </html>
     `
 }
+
+func GetDateSelectHTML(leadID string) string {
+	return fmt.Sprintf(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding-top: 50px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #ffffff;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                border-radius: 8px;
+            }
+            h1 {
+                font-size: 48px;
+                color: #333333;
+            }
+            p {
+                font-size: 20px;
+                color: #666666;
+                margin-top: 20px;
+            }
+        </style>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Select Date</title>
+        <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    </head>
+        <body>
+            <h1>Select a Date</h1>
+            <form id="dateForm">
+                <input type="date" id="selectedDate" required>
+                <button type="submit">Submit</button>
+            </form>
+
+            <script>
+                const leadId = "%s";
+                document.getElementById('dateForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const date = document.getElementById('selectedDate').value;
+                    
+                    axios.post('/submit-date', { date, leadId })
+                        .then(response => {
+                            document.open();
+                            document.write(response.data);
+                            document.close();
+                        })
+                        .catch(error => {
+                            alert('Error submitting date: ' + error.response.data);
+                        });
+                });
+            </script>
+        </body>
+    </html>
+    `, leadID)
+}
+
+func GetDateChangedHTML() string {
+	return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Date Changed</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding-top: 50px;
+                background-color: #f4f4f4;
+            }
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #ffffff;
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                border-radius: 8px;
+            }
+            h1 {
+                font-size: 48px;
+                color: #333333;
+            }
+            p {
+                font-size: 20px;
+                color: #666666;
+                margin-top: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Reminder date Set!</h1>
+            <h2>Go ahead and Close this tab now.</h2>
+            <p>Thank you for visiting. Created by Bryan Edman.</p>
+        </div>
+    </body>
+    </html>
+    `
+}

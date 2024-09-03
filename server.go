@@ -271,6 +271,7 @@ func updateLeadInSheet(leadID string) error {
 	}
 
 	return nil
+
 }
 
 // New endpoint to handle the AJAX request
@@ -344,12 +345,104 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
-func savepreferences(w http.ResponseWriter, r *http.Request) {
+func dateSelectionHandler(w http.ResponseWriter, r *http.Request) {
+	leadID := r.URL.Query().Get("lead_id")
+	if leadID == "" {
+		http.Error(w, "Missing lead ID", http.StatusBadRequest)
+		return
+	}
+
+	session, _ := store.Get(r, "auth-session")
+	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
+		http.Redirect(w, r, fmt.Sprintf("/login?lead_id=%s", leadID), http.StatusTemporaryRedirect)
+		//http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	dateSelectionHTML := templates.GetDateSelectHTML(leadID)
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, dateSelectionHTML)
+}
+
+func updateDateInSheet(leadID string, date string) error {
+	// Get all values from the sheet
+	readRange := fmt.Sprintf("%s!A1:Z", sheetName)
+	resp, err := sheetsService.Spreadsheets.Values.Get(spreadsheetID, readRange).Do()
+	if err != nil {
+		return fmt.Errorf("unable to retrieve data from sheet: %v", err)
+	}
+
+	// Find the row with the matching lead_id
+	rowIndex := -1
+	for i, row := range resp.Values {
+		for _, cell := range row {
+			cellStr, ok := cell.(string)
+			if !ok {
+				continue // Skip non-string cells
+			}
+			if strings.Contains(cellStr, leadID) {
+				rowIndex = i
+				break
+			}
+		}
+		if rowIndex != -1 {
+			break
+		}
+	}
+
+	if rowIndex == -1 {
+		return fmt.Errorf("Lead ID %s not found", leadID)
+	}
+
+	// Update the 20th column (T) with the date
+	updateColumn := "T"
+	updateRange := fmt.Sprintf("%s!%s%d", sheetName, updateColumn, rowIndex+1)
+	values := [][]interface{}{
+		{date},
+	}
+	valueRange := &sheets.ValueRange{
+		Values: values,
+	}
+
+	_, err = sheetsService.Spreadsheets.Values.Update(spreadsheetID, updateRange, valueRange).
+		ValueInputOption("USER_ENTERED").
+		Do()
+
+	if err != nil {
+		return fmt.Errorf("unable to update sheet: %v", err)
+	}
+
+	return nil
+}
+
+func submitDateHandler(w http.ResponseWriter, r *http.Request) {
 	session, _ := store.Get(r, "auth-session")
 	if auth, ok := session.Values["authenticated"].(bool); !ok || !auth {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
+	var data struct {
+		Date   string `json:"date"`
+		LeadID string `json:"leadId"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	err := updateDateInSheet(data.LeadID, data.Date)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("An error occurred: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	dateChangedHTML := templates.GetDateChangedHTML()
+	w.Header().Set("Content-Type", "text/html")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, dateChangedHTML)
 }
 
 func main() {
@@ -358,7 +451,8 @@ func main() {
 	http.HandleFunc("/login", loginHandler)
 	http.HandleFunc("/auth/google/callback", callbackHandler)
 	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/preferences", savepreferences)
+	http.HandleFunc("/select-date", dateSelectionHandler)
+	http.HandleFunc("/submit-date", submitDateHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
