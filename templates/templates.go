@@ -407,31 +407,30 @@ func GetDateSelectHTML(leadID string) string {
         <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     </head>
         <body>
-            <h1>Select a Date</h1>
             <div class="container">
-                <form id="dateForm">
-                    <input type="date" id="selectedDate" required>
-                    <button type="submit">Submit</button>
-                </form>
-            </div
-
-            <script>
-                const leadId = "%s";
-                document.getElementById('dateForm').addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const date = document.getElementById('selectedDate').value;
-                    
-                    axios.post('/submit-date', { date, leadId })
-                        .then(response => {
-                            document.open();
-                            document.write(response.data);
-                            document.close();
-                        })
-                        .catch(error => {
-                            alert('Error submitting date: ' + error.response.data);
-                        });
-                });
-            </script>
+                <h1>Select a Date</h1>
+                    <form id="dateForm">
+                        <input type="date" id="selectedDate" required>
+                        <button type="submit">Submit</button>
+                    </form>
+                <script>
+                    const leadId = "%s";
+                    document.getElementById('dateForm').addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        const date = document.getElementById('selectedDate').value;
+                        
+                        axios.post('/submit-date', { date, leadId })
+                            .then(response => {
+                                document.open();
+                                document.write(response.data);
+                                document.close();
+                            })
+                            .catch(error => {
+                                alert('Error submitting date: ' + error.response.data);
+                            });
+                    });
+                </script>
+            </div>
         </body>
     </html>
     `, leadID)
