@@ -9,14 +9,69 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/BryanRSummit/LeadMailerServer/templates"
 	"github.com/gorilla/sessions"
+	"github.com/patrickmn/go-cache"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"golang.org/x/time/rate"
 	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
+
+// Define a struct to hold our rate limiter and last hit times
+type IPRateLimiter struct {
+	ips   *cache.Cache
+	mu    sync.Mutex
+	rate  rate.Limit
+	burst int
+}
+
+// Create a new rate limiter
+func NewIPRateLimiter(r rate.Limit, b int) *IPRateLimiter {
+	i := &IPRateLimiter{
+		ips:   cache.New(2*time.Minute, 5*time.Minute),
+		rate:  r,
+		burst: b,
+	}
+
+	return i
+}
+
+// Get and create limiter for an IP address if it doesn't exist
+func (i *IPRateLimiter) GetLimiter(ip string) *rate.Limiter {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	v, exists := i.ips.Get(ip)
+	if !exists {
+		limiter := rate.NewLimiter(i.rate, i.burst)
+		i.ips.Set(ip, limiter, cache.DefaultExpiration)
+		return limiter
+	}
+
+	limiter := v.(*rate.Limiter)
+	return limiter
+}
+
+// Create a new rate limiter allowing 5 requests per second with a burst of 10
+var limiter = NewIPRateLimiter(5, 10)
+
+// Middleware function to handle rate limiting
+func rateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ip := r.RemoteAddr
+		limiter := limiter.GetLimiter(ip)
+		if !limiter.Allow() {
+			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}
 
 var (
 	sheetsService *sheets.Service
@@ -446,13 +501,22 @@ func submitDateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	http.HandleFunc("/", handleLeadMailer)
-	http.HandleFunc("/update-lead", updateLeadHandler)
-	http.HandleFunc("/login", loginHandler)
-	http.HandleFunc("/auth/google/callback", callbackHandler)
-	http.HandleFunc("/logout", logoutHandler)
-	http.HandleFunc("/select-date", dateSelectionHandler)
-	http.HandleFunc("/submit-date", submitDateHandler)
+	// http.HandleFunc("/", handleLeadMailer)
+	// http.HandleFunc("/update-lead", updateLeadHandler)
+	// http.HandleFunc("/login", loginHandler)
+	// http.HandleFunc("/auth/google/callback", callbackHandler)
+	// http.HandleFunc("/logout", logoutHandler)
+	// http.HandleFunc("/select-date", dateSelectionHandler)
+	// http.HandleFunc("/submit-date", submitDateHandler)
+
+	// Apply rate limiting middleware to your handlers
+	http.HandleFunc("/", rateLimitMiddleware(handleLeadMailer))
+	http.HandleFunc("/update-lead", rateLimitMiddleware(updateLeadHandler))
+	http.HandleFunc("/login", rateLimitMiddleware(loginHandler))
+	http.HandleFunc("/auth/google/callback", rateLimitMiddleware(callbackHandler))
+	http.HandleFunc("/logout", rateLimitMiddleware(logoutHandler))
+	http.HandleFunc("/select-date", rateLimitMiddleware(dateSelectionHandler))
+	http.HandleFunc("/submit-date", rateLimitMiddleware(submitDateHandler))
 
 	port := os.Getenv("PORT")
 	if port == "" {

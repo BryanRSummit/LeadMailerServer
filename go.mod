@@ -5,7 +5,9 @@ go 1.23.0
 require (
 	github.com/gorilla/sessions v1.4.0
 	github.com/joho/godotenv v1.5.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	golang.org/x/oauth2 v0.22.0
+	golang.org/x/time v0.6.0
 	google.golang.org/api v0.192.0
 )
 
