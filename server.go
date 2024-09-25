@@ -14,7 +14,6 @@ import (
 
 	"github.com/BryanRSummit/LeadMailerServer/templates"
 	"github.com/gorilla/sessions"
-	"github.com/joho/godotenv"
 	"github.com/patrickmn/go-cache"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -88,32 +87,32 @@ var (
 
 func init() {
 
-	// //--------SHEETS_CREDS PROD----------------------------------------------------------
-	// // Initialize Google Sheets API client
-	// credJSON := os.Getenv("SHEETS_CREDS")
-	// if credJSON == "" {
-	// 	log.Fatal("SHEETS_CREDS environment variable is not set")
-	// }
-
-	// credBytes := []byte(credJSON)
-
-	// config, err := google.JWTConfigFromJSON(credBytes, sheets.SpreadsheetsScope)
-	// if err != nil {
-	// 	log.Fatalf("Unable to parse credentials: %v", err)
-	// }
-	// //--------END SHEETS_CREDS PROD----------------------------------------------------------
-
-	//---------SHEETS CREDS LOCAL---------------------------------------------------------------
-	credBytes, err := os.ReadFile("agentcontactcount-01c64e5317e2.json")
-	if err != nil {
-		log.Fatalf("Unable to read credentials file: %v", err)
+	//--------SHEETS_CREDS PROD----------------------------------------------------------
+	// Initialize Google Sheets API client
+	credJSON := os.Getenv("SHEETS_CREDS")
+	if credJSON == "" {
+		log.Fatal("SHEETS_CREDS environment variable is not set")
 	}
+
+	credBytes := []byte(credJSON)
 
 	config, err := google.JWTConfigFromJSON(credBytes, sheets.SpreadsheetsScope)
 	if err != nil {
 		log.Fatalf("Unable to parse credentials: %v", err)
 	}
-	//---------END SHEETS_CREDS LOCAL-----------------------------------------------------------
+	//--------END SHEETS_CREDS PROD----------------------------------------------------------
+
+	// //---------SHEETS CREDS LOCAL---------------------------------------------------------------
+	// credBytes, err := os.ReadFile("agentcontactcount-01c64e5317e2.json")
+	// if err != nil {
+	// 	log.Fatalf("Unable to read credentials file: %v", err)
+	// }
+
+	// config, err := google.JWTConfigFromJSON(credBytes, sheets.SpreadsheetsScope)
+	// if err != nil {
+	// 	log.Fatalf("Unable to parse credentials: %v", err)
+	// }
+	// //---------END SHEETS_CREDS LOCAL-----------------------------------------------------------
 
 	ctx := context.Background()
 	client := config.Client(ctx)
@@ -123,16 +122,16 @@ func init() {
 		log.Fatalf("Unable to create Sheets client: %v", err)
 	}
 
-	//-------LOCAL ENV - COMMENT OUT FOR PROD----------------------------------------
-	// Load .env.local file
-	if err := godotenv.Load(".env.local"); err != nil {
-		log.Println("Error loading .env.local file. Falling back to .env")
-		// Attempt to load .env file as fallback
-		if err := godotenv.Load(); err != nil {
-			log.Println("Error loading .env file. Using system environment variables.")
-		}
-	}
-	//-------LOCAL ENV - COMMENT OUT FOR PROD----------------------------------------
+	// //-------LOCAL ENV - COMMENT OUT FOR PROD----------------------------------------
+	// // Load .env.local file
+	// if err := godotenv.Load(".env.local"); err != nil {
+	// 	log.Println("Error loading .env.local file. Falling back to .env")
+	// 	// Attempt to load .env file as fallback
+	// 	if err := godotenv.Load(); err != nil {
+	// 		log.Println("Error loading .env file. Using system environment variables.")
+	// 	}
+	// }
+	// //-------LOCAL ENV - COMMENT OUT FOR PROD----------------------------------------
 
 	//auth config
 	oauthConfig = &oauth2.Config{
